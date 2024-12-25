@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 600px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        button {
+            padding: 0.8rem 2rem;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #startBtn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        #startBtn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        #stopBtn {
+            background: #f44336;
+            color: white;
+        }
+
+        #stopBtn:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #cccccc !important;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status {
+            text-align: center;
+            color: #4a5568;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+            min-height: 1.5rem;
+        }
+
+        #output {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 15px;
+            min-height: 100px;
+            margin-top: 1rem;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #2d3748;
+            transition: all 0.3s ease;
+            border: 2px solid #e2e8f0;
+        }
+
+        #output:empty {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        #output:empty::before {
+            content: "Your speech will appear here...";
+        }
+
+        .listening-animation {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #48bb78;
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.7);
+            }
+            
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(72, 187, 120, 0);
+            }
+            
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(72, 187, 120, 0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech to Text</h1>
+        <div class="controls">
+            <button id="startBtn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+                Start
+            </button>
+            <button id="stopBtn" disabled>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                </svg>
+                Stop
+            </button>
+        </div>
+        <div class="status" id="status">Click Start to begin recording</div>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+        
+        let recognition = null;
+        let lastTranscript = '';
+        
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            
+            recognition.onstart = () => {
+                status.innerHTML = 'Listening... <span class="listening-animation"></span>';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            };
+            
+            recognition.onend = () => {
+                status.textContent = 'Click Start to begin recording';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            };
+            
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                        // Clear previous text and show new sentence
+                        output.textContent = transcript.trim();
+                        lastTranscript = transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                // Show interim results while speaking
+                if (interimTranscript !== '') {
+                    output.textContent = interimTranscript;
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                status.textContent = 'Error occurred: ' + event.error;
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            };
+        } else {
+            status.textContent = 'Speech recognition not supported in this browser';
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+        }
+        
+        startBtn.onclick = () => {
+            if (recognition) {
+                output.textContent = '';
+                recognition.start();
+            }
+        };
+        
+        stopBtn.onclick = () => {
+            if (recognition) {
+                recognition.stop();
+            }
+        };
+    </script>
+</body>
+</html>
